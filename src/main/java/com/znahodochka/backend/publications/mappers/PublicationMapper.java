@@ -25,7 +25,7 @@ public interface PublicationMapper {
     @Mapping(target = "isChallengeActive", ignore = true)
     @Mapping(target = "isWinner", ignore = true)
     @Mapping(target = "isLiked", ignore = true)
-    @Mapping(target = "location", ignore = true)
+    //@Mapping(target = "location", ignore = true)
     PublicationDto toDto(Publication publication);
 
     CategoryDto toCategoryDto(Category category);
