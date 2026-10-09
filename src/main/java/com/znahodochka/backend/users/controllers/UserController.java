@@ -8,6 +8,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -98,4 +100,11 @@ public class UserController {
         return userService.isEmailFree(email);
     }
 
+
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAnyRole('BASIC')")
+    public List<ShortUserInfoDto> searchUsers(@RequestParam String query) {
+        return userService.searchUsers(query);
+    }
 }

@@ -3,6 +3,7 @@ package com.znahodochka.backend.users.services;
 import com.znahodochka.backend.users.dto.*;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 
 
 public interface UserService {
@@ -29,4 +30,6 @@ public interface UserService {
     ShortUserInfoDto getShortUserInfo(Long userId);
 
     void deleteAvatarUri(String avatarUri, Long principal);
+
+    List<ShortUserInfoDto> searchUsers(String query);
 }

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -176,5 +177,25 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(principal).orElseThrow();
         user.setAvatarUri(null);
         userRepository.save(user);
+    }
+
+    @Override
+    public List<ShortUserInfoDto> searchUsers(String query) {
+        if (query == null || query.trim().length() < 2) {
+            return List.of();
+        }
+        return userRepository.findByLoginLike(query.trim())
+                .stream()
+                .map(this::toShortDto)
+                .toList();
+    }
+
+    private ShortUserInfoDto toShortDto(User user) {
+        return ShortUserInfoDto.builder()
+                .id(user.getId())
+                .login(user.getLogin())
+                .name(user.getName())
+                .avatarUri(user.getAvatarUri())
+                .build();
     }
 }
