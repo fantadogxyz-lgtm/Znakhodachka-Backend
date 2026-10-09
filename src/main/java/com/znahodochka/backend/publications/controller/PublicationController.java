@@ -135,4 +135,17 @@ public class PublicationController {
         return publicationService.getCities(region);
     }
 
+    @GetMapping("/search-map")
+    @PreAuthorize("hasAnyRole('BASIC')")
+    public List<PublicationDto> searchPublications(
+            @RequestParam double lat,
+            @RequestParam double lon,
+            @RequestParam double radiusKm,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Set<Long> tagIds,
+            final UsernamePasswordAuthenticationToken token){
+        double radiusMeters = radiusKm * 1000;
+        return publicationService.getRandomPublicationsInRadius(lat, lon, radiusMeters, categoryId, tagIds, (Long)token.getPrincipal());
+    }
+
 }

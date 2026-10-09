@@ -32,4 +32,6 @@ public interface PublicationService {
                                     Instant cursor, int size, Long userId);
 
     List<String> getCities(String region);
+
+    List<PublicationDto> getRandomPublicationsInRadius(double lat, double lon, double radiusMeters, Long CategoryId, Set<Long> tagIds, Long userId);
 }

@@ -372,4 +372,21 @@ public class PublicationServiceImpl implements PublicationService {
     public List<String> getCities(String region) {
         return publicationRepository.findDistinctCities(region);
     }
+
+    @Override
+    public List<PublicationDto> getRandomPublicationsInRadius(double lat, double lon, double radiusMeters, Long CategoryId, Set<Long> tagIds, Long currentUserId) {
+        List<Publication> publications;
+        if (tagIds == null || CategoryId == null) {
+            publications = publicationRepository.findRandomInRadius(lat, lon, radiusMeters);
+        } else if (tagIds == null || CategoryId != null) {
+            publications = publicationRepository.findRandomInRadiusWithCategory(
+                    lat, lon, radiusMeters, CategoryId);
+        } else{
+            publications = publicationRepository.findRandomInRadiusWithCategoryAndTags(
+                    lat, lon, radiusMeters, CategoryId, tagIds);
+        }
+
+        return publications.stream()
+                .map(publication -> toDtoWithAuthor(publication, currentUserId)).toList();
+    }
 }

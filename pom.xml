@@ -74,7 +74,10 @@
             <artifactId>minio</artifactId>
             <version>RELEASE</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-spatial</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>

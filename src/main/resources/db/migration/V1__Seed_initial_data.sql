@@ -173,3 +173,7 @@ CREATE TABLE IF NOT EXISTS server_settings.jwt_keys(
 );
 
 
+
+--для реккомендаций:
+
+

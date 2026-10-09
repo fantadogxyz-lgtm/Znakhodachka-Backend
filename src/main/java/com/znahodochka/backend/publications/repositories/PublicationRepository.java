@@ -11,7 +11,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -179,4 +178,64 @@ public interface PublicationRepository extends JpaRepository<Publication, UUID> 
             @Param("city") String city,
             @Param("cursor") Instant cursor,
             Pageable pageable);
+
+
+    @Query(value = """
+    SELECT * FROM publications.publications p
+    WHERE p.publication_type <> 'CHALLENGE_RESPONSE'
+      AND p.location IS NOT NULL
+      AND ST_DWithin(
+            p.location,
+            ST_MakePoint(:lon, :lat)::geography,
+            :radiusMeters
+          )
+    ORDER BY random()
+    LIMIT 10
+""", nativeQuery = true)
+    List<Publication> findRandomInRadius(
+            @Param("lat") double lat,
+            @Param("lon") double lon,
+            @Param("radiusMeters") double radiusMeters);
+
+
+    @Query(value = """
+    SELECT * FROM publications.publications p
+    WHERE p.publication_type <> 'CHALLENGE_RESPONSE'
+      AND p.category_id = :categoryId
+      AND p.location IS NOT NULL
+      AND ST_DWithin(
+            p.location,
+            ST_MakePoint(:lon, :lat)::geography,
+            :radiusMeters
+          )
+    ORDER BY random()
+    LIMIT 10
+""", nativeQuery = true)
+    List<Publication> findRandomInRadiusWithCategory(
+            @Param("lat") double lat,
+            @Param("lon") double lon,
+            @Param("radiusMeters") double radiusMeters,
+            @Param("categoryId") Long categoryId);
+
+    @Query(value = """
+    SELECT DISTINCT p.* FROM publications.publications p
+    JOIN publications.publication_tags pt ON pt.publication_id = p.id
+    WHERE p.publication_type <> 'CHALLENGE_RESPONSE'
+      AND (:categoryId IS NULL OR p.category_id = :categoryId)
+      AND pt.tag_id IN (:tagIds)
+      AND p.location IS NOT NULL
+      AND ST_DWithin(
+            p.location,
+            ST_MakePoint(:lon, :lat)::geography,
+            :radiusMeters
+          )
+    ORDER BY random()
+    LIMIT 10
+""", nativeQuery = true)
+    List<Publication> findRandomInRadiusWithCategoryAndTags(
+            @Param("lat") double lat,
+            @Param("lon") double lon,
+            @Param("radiusMeters") double radiusMeters,
+            @Param("categoryId") Long categoryId,
+            @Param("tagIds") Set<Long> tagIds);
 }

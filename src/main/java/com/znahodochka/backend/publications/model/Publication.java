@@ -3,6 +3,7 @@ package com.znahodochka.backend.publications.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.awt.*;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
@@ -38,6 +39,9 @@ public class Publication {
 
     private Double latitude;
     private Double longitude;
+
+    @Column(columnDefinition = "geography(Point, 4326)")
+    private Point location;
 
     private String region;
     private String city;
