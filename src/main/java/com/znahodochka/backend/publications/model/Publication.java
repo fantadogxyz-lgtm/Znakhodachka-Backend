@@ -3,7 +3,7 @@ package com.znahodochka.backend.publications.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.awt.*;
+import org.locationtech.jts.geom.Point;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
@@ -70,6 +70,19 @@ public class Publication {
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
     private Set<Tag> tags = new HashSet<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "community_id")
+    private Community community;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "publication_community_tags",
+            schema = "publications",
+            joinColumns = @JoinColumn(name = "publication_id"),
+            inverseJoinColumns = @JoinColumn(name = "community_tag_id")
+    )
+    private Set<CommunityTag> communityTags = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {

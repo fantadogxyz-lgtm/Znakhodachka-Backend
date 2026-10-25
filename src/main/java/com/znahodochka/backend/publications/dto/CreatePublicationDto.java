@@ -14,6 +14,8 @@ public record CreatePublicationDto(
         PublicationType type,
         Long category,
         Set<Long> tags,
+        UUID communityId,
+        Set<Long> communityTags,
         String title,
         String description,
         Double latitude,

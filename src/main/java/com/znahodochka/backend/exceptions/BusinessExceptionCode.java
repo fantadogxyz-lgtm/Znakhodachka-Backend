@@ -107,7 +107,59 @@ public enum BusinessExceptionCode {
      * Комментарий не принадлежит пользователю
      * 18
      */
-    NOT_YOUR_COMMENT
+    NOT_YOUR_COMMENT,
+
+    /**
+     * 19
+     */
+    COMMUNITY_LIMIT_REACHED,
+    /**
+     * 20
+     */
+    SLUG_ALREADY_TAKEN,
+    /**
+     * 21
+     */
+    MIN_ONE_TAG_REQUIRED,
+    /**
+     * 22
+     */
+    TOO_MANY_TAGS,
+    /**
+     * 23
+     */
+    TAG_ALREADY_EXISTS,
+    /**
+     * 24
+     */
+    NOT_YOUR_COMMUNITY,
+    /**
+     * 25
+     */
+    ALREADY_MEMBER,
+    /**
+     * 26
+     */
+    NOT_A_MEMBER,
+    /**
+     * 27
+     */
+    CREATOR_CANNOT_LEAVE,
+
+    /**
+     * 28
+     */
+    DISCUSSION_TOPIC_NOT_FOUND,
+
+    /**
+     * 29
+     */
+    DISCUSSION_PARENT_NOT_FOUND,
+
+    /**
+     * 30
+     */
+    NOT_YOUR_DISCUSSION
 
 
 }

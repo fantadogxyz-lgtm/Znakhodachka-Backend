@@ -39,4 +39,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         
             """, nativeQuery = true)
     List<User> findByLoginLike(@Param("query") String login);
+
+
 }

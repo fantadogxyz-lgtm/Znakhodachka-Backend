@@ -181,7 +181,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<ShortUserInfoDto> searchUsers(String query) {
-        if (query == null || query.trim().length() < 2) {
+        if (query == null || query.trim().isEmpty()) {
             return List.of();
         }
         return userRepository.findByLoginLike(query.trim())

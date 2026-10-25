@@ -18,6 +18,8 @@ public record PublicationDto (
     Boolean isLiked,
     CategoryDto category,
     Set<TagDto> tags,
+    CommunityShortDto communityShortDto,
+    Set<CommunityTagDto> communityTags,
     String title,
     String description,
     Double latitude,

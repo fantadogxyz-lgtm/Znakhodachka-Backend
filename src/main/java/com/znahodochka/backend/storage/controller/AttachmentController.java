@@ -44,7 +44,7 @@ public class AttachmentController {
             @RequestBody List<UpdateAttachmentDto> attachments,
             final UsernamePasswordAuthenticationToken token) {
         attachmentService.updatePublicationAttachments(publicationId, attachments, (Long) token.getPrincipal());
-    }
+    } //такое же сделать для обсуждений
 
     @GetMapping("/download/{fileUri}")
     @PreAuthorize("hasAnyRole('BASIC')")

@@ -20,6 +20,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -55,6 +59,10 @@ public class PublicationServiceImpl implements PublicationService {
                 .category(categoryRepository.findById(dto.category()).orElseThrow(ResourceNotFoundException::new))
                 .tags(new HashSet<>(tagRepository.findAllById(dto.tags())))
                 .build();
+
+        if (dto.latitude() != null && dto.longitude() != null) {
+            publication.setLocation(makePoint(dto.longitude(), dto.latitude()));
+        }
 
 
         if (dto.type() == PublicationType.CHALLENGE_RESPONSE) {
@@ -335,6 +343,10 @@ public class PublicationServiceImpl implements PublicationService {
             publication.setEndDate(dto.endDate());
         }
 
+//        if (dto.latitude() != null && dto.longitude() != null) {
+//            publication.setLocation(makePoint(dto.longitude(), dto.latitude()));
+//        }
+
         Publication saved = publicationRepository.save(publication);
 
         return toDtoWithAuthor(saved, userId);
@@ -388,5 +400,10 @@ public class PublicationServiceImpl implements PublicationService {
 
         return publications.stream()
                 .map(publication -> toDtoWithAuthor(publication, currentUserId)).toList();
+    }
+
+    private Point makePoint(Double lon, Double lat) {
+        GeometryFactory gf = new GeometryFactory(new PrecisionModel(), 4326);
+        return gf.createPoint(new Coordinate(lon, lat));
     }
 }

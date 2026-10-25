@@ -166,4 +166,10 @@ VALUES (35, 'Фотогенично')
 INSERT INTO publications.tags (id, title)
 VALUES (36, 'Дикий туризм')
     ON CONFLICT DO NOTHING;
+INSERT INTO publications.tags (id, title)
+VALUES (37, 'Велопрогулка')
+    ON CONFLICT DO NOTHING;
+INSERT INTO publications.tags (id, title)
+VALUES (38, 'С животными')
+    ON CONFLICT DO NOTHING;
 

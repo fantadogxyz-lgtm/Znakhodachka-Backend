@@ -182,7 +182,7 @@ public interface PublicationRepository extends JpaRepository<Publication, UUID> 
 
     @Query(value = """
     SELECT * FROM publications.publications p
-    WHERE p.publication_type <> 'CHALLENGE_RESPONSE'
+    WHERE p.publication_type <> 2
       AND p.location IS NOT NULL
       AND ST_DWithin(
             p.location,
@@ -200,7 +200,7 @@ public interface PublicationRepository extends JpaRepository<Publication, UUID> 
 
     @Query(value = """
     SELECT * FROM publications.publications p
-    WHERE p.publication_type <> 'CHALLENGE_RESPONSE'
+    WHERE p.publication_type <> 2
       AND p.category_id = :categoryId
       AND p.location IS NOT NULL
       AND ST_DWithin(
@@ -220,7 +220,7 @@ public interface PublicationRepository extends JpaRepository<Publication, UUID> 
     @Query(value = """
     SELECT DISTINCT p.* FROM publications.publications p
     JOIN publications.publication_tags pt ON pt.publication_id = p.id
-    WHERE p.publication_type <> 'CHALLENGE_RESPONSE'
+    WHERE p.publication_type <> 2
       AND (:categoryId IS NULL OR p.category_id = :categoryId)
       AND pt.tag_id IN (:tagIds)
       AND p.location IS NOT NULL
@@ -238,4 +238,26 @@ public interface PublicationRepository extends JpaRepository<Publication, UUID> 
             @Param("radiusMeters") double radiusMeters,
             @Param("categoryId") Long categoryId,
             @Param("tagIds") Set<Long> tagIds);
+
+    @Query("""
+    SELECT p FROM Publication p
+    WHERE p.community IS NOT NULL
+      AND p.publicationType <> :excluded
+    ORDER BY p.createdAt DESC
+""")
+    List<Publication> findCommunityFeedFirstPage(
+            @Param("excluded") PublicationType excluded,
+            Pageable pageable);
+
+    @Query("""
+    SELECT p FROM Publication p
+    WHERE p.community IS NOT NULL
+      AND p.publicationType <> :excluded
+      AND p.createdAt < :cursor
+    ORDER BY p.createdAt DESC
+""")
+    List<Publication> findCommunityFeedNextPage(
+            @Param("excluded") PublicationType excluded,
+            @Param("cursor") Instant cursor,
+            Pageable pageable);
 }

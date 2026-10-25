@@ -30,5 +30,6 @@ public interface PublicationMapper {
 
     CategoryDto toCategoryDto(Category category);
     TagDto toTagDto(Tag tag);
+
     List<TagDto> toTagDtoList(Set<Tag> tags);
 }
