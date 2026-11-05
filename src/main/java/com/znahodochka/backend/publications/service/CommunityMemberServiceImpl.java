@@ -15,7 +15,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,7 +34,7 @@ public class CommunityMemberServiceImpl implements CommunityMemberService {
         Community community = communityRepository.findById(communityId)
                 .orElseThrow(() -> new ResourceNotFoundException("Community not found"));
 
-        if (communityParticipationRepository.existsById_CommunityIdAndId_UserId(communityId, userId)) {
+        if (communityParticipationRepository.existsByCommunityIdAndUserId(communityId, userId)) {
             throw new BadRequestException(BusinessExceptionCode.ALREADY_MEMBER);
         }
 
@@ -59,7 +58,7 @@ public class CommunityMemberServiceImpl implements CommunityMemberService {
         if (community.getCreatorId().equals(userId)) {
             throw new BadRequestException(BusinessExceptionCode.CREATOR_CANNOT_LEAVE);
         }
-        if (!communityParticipationRepository.existsById_CommunityIdAndId_UserId(communityId, userId)) {
+        if (!communityParticipationRepository.existsByCommunityIdAndUserId(communityId, userId)) {
             throw new BadRequestException(BusinessExceptionCode.NOT_A_MEMBER);
         }
 

@@ -3,15 +3,21 @@ package com.znahodochka.backend.storage.service;
 import com.znahodochka.backend.exceptions.BadRequestException;
 import com.znahodochka.backend.exceptions.BusinessExceptionCode;
 import com.znahodochka.backend.exceptions.ResourceNotFoundException;
+import com.znahodochka.backend.publications.model.Discussion;
 import com.znahodochka.backend.publications.model.Publication;
+import com.znahodochka.backend.publications.repositories.DiscussionRepository;
 import com.znahodochka.backend.publications.repositories.PublicationRepository;
 import com.znahodochka.backend.storage.dto.AttachmentDto;
+import com.znahodochka.backend.storage.dto.DiscussionAttachmentDto;
 import com.znahodochka.backend.storage.dto.UpdateAttachmentDto;
+import com.znahodochka.backend.storage.dto.UpdateDiscussionAttachmentDto;
 import com.znahodochka.backend.storage.model.Attachment;
 import com.znahodochka.backend.storage.model.Bucket;
+import com.znahodochka.backend.storage.model.DiscussionAttachment;
 import com.znahodochka.backend.storage.repositories.AttachmentRepository;
 import com.znahodochka.backend.storage.repositories.AttachmentTypeRepository;
 import com.znahodochka.backend.storage.repositories.BucketRepository;
+import com.znahodochka.backend.storage.repositories.DiscussionAttachmentRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
@@ -25,17 +31,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AttachmentServiceImpl implements AttachmentService {
     private final AttachmentRepository attachmentRepository;
+    private final DiscussionAttachmentRepository discussionAttachmentRepository; // ДОБАВИЛИ
     private final MinioService minioService;
     private final BucketRepository bucketRepository;
     private final AttachmentTypeRepository attachmentTypeRepository;
     private final PublicationRepository publicationRepository;
-
+    private final DiscussionRepository discussionRepository; // ДОБАВИЛИ
 
 
     @Override
@@ -65,11 +71,45 @@ public class AttachmentServiceImpl implements AttachmentService {
     }
 
     @Override
+    @Transactional
+    public DiscussionAttachmentDto uploadForDiscussion(MultipartFile file, Long userId) {
+        Bucket bucket = checkOrCreateUserBucket(userId);
+
+        DiscussionAttachment attachment = DiscussionAttachment.builder()
+                .type(detectTypeId(file.getOriginalFilename()))
+                .bucket(bucket)
+                .discussionId(null)
+                .photoOrder(null)
+                .build();
+
+        DiscussionAttachment saved = discussionAttachmentRepository.save(attachment);
+        UUID attachmentId = saved.getId();
+
+        String extension = extractExtension(file.getOriginalFilename());
+        String fileName = attachmentId + "." + extension;
+
+        minioService.uploadFile(bucket.getBucketName(), fileName, file);
+
+        saved.setFileUri(attachmentId + "." + extension);
+        discussionAttachmentRepository.save(saved);
+
+        return toDiscussionDto(saved);
+    }
+
+    @Override
     public List<AttachmentDto> getByPublicationId(UUID publicationId) {
         return attachmentRepository.findByPublicationIdOrderByPhotoOrder(publicationId).stream()
                 .map(this::toDto)
                 .toList();
     }
+
+    @Override
+    public List<DiscussionAttachmentDto> getByDiscussionId(UUID discussionId) {
+        return discussionAttachmentRepository.findAllByDiscussionId(discussionId).stream()
+                .map(this::toDiscussionDto)
+                .toList();
+    }
+
 
     @Override
     public void attachToPublication(List<UUID> attachmentIds, UUID publicationId) {
@@ -82,16 +122,32 @@ public class AttachmentServiceImpl implements AttachmentService {
     }
 
     @Override
+    @Transactional
+    public void attachToDiscussion(List<UUID> attachmentIds, UUID discussionId) {
+        if (attachmentIds == null || attachmentIds.isEmpty()) return;
+        List<DiscussionAttachment> attachments = discussionAttachmentRepository.findAllById(attachmentIds);
+        for (int i = 0; i < attachments.size(); i++) {
+            attachments.get(i).setDiscussionId(discussionId);
+            attachments.get(i).setPhotoOrder((long) i);
+        }
+        discussionAttachmentRepository.saveAll(attachments);
+    }
+
+    @Override
     public Resource downloadFile(String fileUri) {
-        Attachment attachment = attachmentRepository.findByFileUri(fileUri)
-                .orElseThrow(ResourceNotFoundException::new);
+        var attachment = attachmentRepository.findByFileUri(fileUri);
+        String bucketName;
 
-        // 2. Достаём бакет
-        String bucketName = attachment.getBucket().getBucketName();
+        if (attachment.isPresent()) {
+            bucketName = attachment.get().getBucket().getBucketName();
+        } else {
+            var discussionAttachment = discussionAttachmentRepository.findByFileUri(fileUri)
+                    .orElseThrow(ResourceNotFoundException::new);
+            bucketName = discussionAttachment.getBucket().getBucketName();
+        }
 
-        // 3. Скачиваем из MinIO как поток
         try {
-            InputStream stream = minioService.downloadFile(bucketName, attachment.getFileUri());
+            InputStream stream = minioService.downloadFile(bucketName, fileUri);
             return new InputStreamResource(stream);
         } catch (Exception e) {
             throw new RuntimeException("Failed to download file", e);
@@ -100,7 +156,8 @@ public class AttachmentServiceImpl implements AttachmentService {
 
     @Override
     @Transactional
-    public void updatePublicationAttachments(UUID publicationId, List<UpdateAttachmentDto> attachments, Long userId) {if (attachments == null) return;
+    public void updatePublicationAttachments(UUID publicationId, List<UpdateAttachmentDto> attachments, Long userId) {
+        if (attachments == null) return;
 
         Publication publication = publicationRepository.findById(publicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Publication not found"));
@@ -133,9 +190,45 @@ public class AttachmentServiceImpl implements AttachmentService {
             att.setPhotoOrder(dto.order());
             attachmentRepository.save(att);
         }
-
     }
 
+    @Override
+    @Transactional
+    public void updateDiscussionAttachments(UUID discussionId, List<UpdateDiscussionAttachmentDto> attachments, Long userId) {
+        if (attachments == null) return;
+
+        Discussion discussion = discussionRepository.findById(discussionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Discussion not found"));
+        if (!discussion.getAuthorId().equals(userId)) {
+            throw new BadRequestException(BusinessExceptionCode.NOT_YOUR_DISCUSSION);
+        }
+
+        Set<UUID> keepIds = new HashSet<>();
+        for (UpdateDiscussionAttachmentDto dto : attachments) {
+            if (dto.id() != null) keepIds.add(dto.id());
+            if (dto.attachmentId() != null) keepIds.add(dto.attachmentId());
+        }
+
+        List<DiscussionAttachment> current = discussionAttachmentRepository.findAllByDiscussionId(discussionId);
+        for (DiscussionAttachment att : current) {
+            if (!keepIds.contains(att.getId())) {
+                minioService.deleteFile(att.getBucket().getBucketName(), att.getFileUri());
+                discussionAttachmentRepository.delete(att);
+            }
+        }
+
+        for (UpdateDiscussionAttachmentDto dto : attachments) {
+            UUID attId = dto.id() != null ? dto.id() : dto.attachmentId();
+            if (attId == null) continue;
+
+            DiscussionAttachment att = discussionAttachmentRepository.findById(attId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Discussion attachment not found: " + attId));
+
+            att.setDiscussionId(discussionId);
+            att.setPhotoOrder(dto.order());
+            discussionAttachmentRepository.save(att);
+        }
+    }
 
     @Transactional
     protected Bucket checkOrCreateUserBucket(Long userId) {
@@ -174,6 +267,15 @@ public class AttachmentServiceImpl implements AttachmentService {
 
     private AttachmentDto toDto(Attachment a) {
         return AttachmentDto.builder()
+                .id(a.getId())
+                .fileUri(a.getFileUri())
+                .photoOrder(a.getPhotoOrder())
+                .type(a.getType())
+                .build();
+    }
+
+    private DiscussionAttachmentDto toDiscussionDto(DiscussionAttachment a) {
+        return DiscussionAttachmentDto.builder()
                 .id(a.getId())
                 .fileUri(a.getFileUri())
                 .photoOrder(a.getPhotoOrder())

@@ -3,7 +3,6 @@ package com.znahodochka.backend.publications.service;
 import com.znahodochka.backend.exceptions.BadRequestException;
 import com.znahodochka.backend.exceptions.BusinessExceptionCode;
 import com.znahodochka.backend.exceptions.ResourceNotFoundException;
-import com.znahodochka.backend.publications.model.Community;
 import com.znahodochka.backend.publications.model.DiscussionLike;
 import com.znahodochka.backend.publications.repositories.*;
 import lombok.RequiredArgsConstructor;
@@ -27,13 +26,13 @@ public class DiscussionLikeServiceImpl implements DiscussionLikeService {
             throw new ResourceNotFoundException("Community not found");
         }
 
-        if(communityParticipationRepository.existsById_CommunityIdAndId_UserId(communityId,principal)){
+        if(communityParticipationRepository.existsByCommunityIdAndUserId(communityId,principal)){
             throw new BadRequestException(BusinessExceptionCode.NOT_YOUR_COMMUNITY);
         } if(!communityRepository.existsById(communityId)){
             throw new ResourceNotFoundException("Community not found");
         }
 
-        if(communityParticipationRepository.existsById_CommunityIdAndId_UserId(communityId,principal)){
+        if(communityParticipationRepository.existsByCommunityIdAndUserId(communityId,principal)){
             throw new BadRequestException(BusinessExceptionCode.NOT_YOUR_COMMUNITY);
         }
 
@@ -55,13 +54,13 @@ public class DiscussionLikeServiceImpl implements DiscussionLikeService {
             throw new ResourceNotFoundException("Community not found");
         }
 
-        if(communityParticipationRepository.existsById_CommunityIdAndId_UserId(communityId,principal)){
+        if(communityParticipationRepository.existsByCommunityIdAndUserId(communityId,principal)){
             throw new BadRequestException(BusinessExceptionCode.NOT_YOUR_COMMUNITY);
         } if(!communityRepository.existsById(communityId)){
             throw new ResourceNotFoundException("Community not found");
         }
 
-        if(communityParticipationRepository.existsById_CommunityIdAndId_UserId(communityId,principal)){
+        if(communityParticipationRepository.existsByCommunityIdAndUserId(communityId,principal)){
             throw new BadRequestException(BusinessExceptionCode.NOT_YOUR_COMMUNITY);
         }
 

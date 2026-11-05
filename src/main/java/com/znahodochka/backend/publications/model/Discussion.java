@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -49,6 +51,9 @@ Discussion {
 
     @Column(name = "mentioned_user_id")
     private Long mentionedUserId;
+
+    @OneToMany(mappedBy = "discussion", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Geolocation> geolocations = new ArrayList<>();
 
 
     @PrePersist

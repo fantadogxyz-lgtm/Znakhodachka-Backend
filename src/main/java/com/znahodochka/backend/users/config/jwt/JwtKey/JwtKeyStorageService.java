@@ -28,7 +28,7 @@ public class JwtKeyStorageService {
             return Keys.hmacShaKeyFor(existingKey.get().getKeyValue());
         }
 
-        byte[] keyBytes = generateKeyBytes(64); // 512 бит = 64 байта
+        byte[] keyBytes = generateKeyBytes(64);
         validateKeyLength(keyBytes, "HS512");
 
         jwtKeyRepository.deactivateAllKeys(JwtKeyEntity.KeyType.HS512);

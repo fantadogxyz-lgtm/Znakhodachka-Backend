@@ -92,22 +92,31 @@ public class CommunityController {
 
 
     @PostMapping("/{id}/discussions")
-    public DiscussionDto createDiscussion(@RequestBody CreateDiscussionDto dto, UsernamePasswordAuthenticationToken token, @PathVariable UUID id) {
+    public DiscussionDto createDiscussion(@RequestBody CreateDiscussionDto dto,
+                                          UsernamePasswordAuthenticationToken token,
+                                          @PathVariable UUID id) {
         return communityService.createDiscussion(dto, id, (Long) token.getPrincipal());
     }
 
     @PutMapping("/{communityId}/discussions/{discussionId}")
-    public DiscussionDto updateDiscussion(UsernamePasswordAuthenticationToken token, @PathVariable UUID communityId, @PathVariable UUID discussionId, @RequestBody UpdateDiscussionDto dto) {
+    public DiscussionDto updateDiscussion(UsernamePasswordAuthenticationToken token,
+                                          @PathVariable UUID communityId,
+                                          @PathVariable UUID discussionId,
+                                          @RequestBody UpdateDiscussionDto dto) {
         return communityService.updateDiscussion(dto, communityId, discussionId, (Long) token.getPrincipal());
     }
 
     @GetMapping("/{communityId}/discussions/{discussionId}")
-    public DiscussionDto getDiscussion(UsernamePasswordAuthenticationToken token, @PathVariable UUID communityId, @PathVariable UUID discussionId) {
+    public DiscussionDto getDiscussion(UsernamePasswordAuthenticationToken token,
+                                       @PathVariable UUID communityId,
+                                       @PathVariable UUID discussionId) {
         return communityService.getDiscussion(communityId, discussionId, (Long) token.getPrincipal());
     }
 
     @DeleteMapping("/{communityId}/discussions/{discussionId}")
-    public void deleteDiscussion(UsernamePasswordAuthenticationToken token, @PathVariable UUID communityId, @PathVariable UUID discussionId) {
+    public void deleteDiscussion(UsernamePasswordAuthenticationToken token,
+                                 @PathVariable UUID communityId,
+                                 @PathVariable UUID discussionId) {
         communityService.deleteDiscussion(communityId, discussionId, (Long) token.getPrincipal());
     }
 

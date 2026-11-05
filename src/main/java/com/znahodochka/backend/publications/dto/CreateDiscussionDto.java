@@ -14,6 +14,7 @@ public record CreateDiscussionDto(
         UUID parent_id,
         UUID topic_id,
         @Nullable Long mentionedUserId,
-        List<DiscussionAttachmentDto>  attachments
+        List<DiscussionAttachmentDto>  attachments,
+        List<CreateGeolocationDto> geolocations
         ) {
 }

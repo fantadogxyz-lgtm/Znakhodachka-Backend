@@ -4,10 +4,7 @@ import com.znahodochka.backend.exceptions.BadRequestException;
 import com.znahodochka.backend.exceptions.BusinessExceptionCode;
 import com.znahodochka.backend.exceptions.ResourceNotFoundException;
 import com.znahodochka.backend.publications.dto.*;
-import com.znahodochka.backend.publications.model.Community;
-import com.znahodochka.backend.publications.model.CommunityParticipation;
-import com.znahodochka.backend.publications.model.CommunityTag;
-import com.znahodochka.backend.publications.model.Discussion;
+import com.znahodochka.backend.publications.model.*;
 import com.znahodochka.backend.publications.repositories.*;
 import com.znahodochka.backend.storage.dto.DiscussionAttachmentDto;
 import com.znahodochka.backend.storage.repositories.DiscussionAttachmentRepository;
@@ -16,13 +13,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.znahodochka.backend.publications.mappers.PublicationMapper;
-import com.znahodochka.backend.publications.model.Publication;
-import com.znahodochka.backend.publications.model.PublicationType;
 import com.znahodochka.backend.storage.dto.AttachmentDto;
 import com.znahodochka.backend.storage.service.AttachmentService;
 import com.znahodochka.backend.users.dto.ShortUserInfoDto;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 
 import java.time.Instant;
 import java.util.List;
@@ -47,6 +47,7 @@ public class CommunityServiceImpl implements CommunityService {
     private final PublicationMapper publicationMapper;
     private final AttachmentService attachmentService;
     private final LikeRepository likeRepository;
+    private final GeolocationRepository geolocationRepository;
 
     @Override
     public CommunityDto createCommunity(CreateCommunityDto dto, Long creatorId) {
@@ -219,7 +220,7 @@ public class CommunityServiceImpl implements CommunityService {
 
     @Override
     public boolean isSlugFree(String slug) {
-        return !communityRepository.existsBySlug(slug); // ИСПРАВЛЕНО
+        return !communityRepository.existsBySlug(slug);
     }
 
     @Override
@@ -228,11 +229,10 @@ public class CommunityServiceImpl implements CommunityService {
         Community community = communityRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Community not found"));
 
-        if (!communityParticipationRepository.existsById_CommunityIdAndId_UserId(id, principal)) {
+        if (!communityParticipationRepository.existsByCommunityIdAndUserId(id, principal)) {
             throw new BadRequestException(BusinessExceptionCode.NOT_YOUR_COMMUNITY);
         }
 
-        // ПРОСТО ПРИСВАИВАЕМ ЗНАЧЕНИЯ ИЗ ДТО
         Discussion discussion = Discussion.builder()
                 .text(dto.text())
                 .type(dto.type())
@@ -253,14 +253,39 @@ public class CommunityServiceImpl implements CommunityService {
             discussion.setParent(parent);
         }
 
-        discussionRepository.save(discussion);
-        return toDiscussionDto(discussion, principal);
+        Discussion saved = discussionRepository.save(discussion);
+
+
+        if (dto.attachments() != null && !dto.attachments().isEmpty()) {
+            List<UUID> attachmentIds = dto.attachments().stream()
+                    .map(DiscussionAttachmentDto::id)
+                    .toList();
+            attachmentService.attachToDiscussion(attachmentIds, saved.getId());
+        }
+
+
+        if (dto.geolocations() != null && !dto.geolocations().isEmpty()) {
+            for (CreateGeolocationDto geoDto : dto.geolocations()) {
+                Geolocation geo = Geolocation.builder()
+                        .title(geoDto.title())
+                        .latitude(geoDto.latitude())
+                        .longitude(geoDto.longitude())
+                        .discussion(saved)
+                        .build();
+                if (geoDto.latitude() != null && geoDto.longitude() != null) {
+                    geo.setLocation(makePoint(geoDto.longitude(), geoDto.latitude()));
+                }
+                geolocationRepository.save(geo);
+            }
+        }
+
+        return toDiscussionDto(saved, principal);
     }
 
     @Override
     @Transactional
     public DiscussionDto updateDiscussion(UpdateDiscussionDto dto, UUID communityId, UUID discussionId, Long principal) {
-        if (!communityParticipationRepository.existsById_CommunityIdAndId_UserId(communityId, principal)) {
+        if (!communityParticipationRepository.existsByCommunityIdAndUserId(communityId, principal)) {
             throw new BadRequestException(BusinessExceptionCode.NOT_YOUR_COMMUNITY);
         }
 
@@ -272,8 +297,27 @@ public class CommunityServiceImpl implements CommunityService {
         }
 
         discussion.setText(dto.text());
-        discussionRepository.save(discussion);
-        return toDiscussionDto(discussion, principal);
+
+
+        if (dto.geolocations() != null) {
+            discussion.getGeolocations().clear();
+
+            for (CreateGeolocationDto geoDto : dto.geolocations()) {
+                Geolocation geo = Geolocation.builder()
+                        .title(geoDto.title())
+                        .latitude(geoDto.latitude())
+                        .longitude(geoDto.longitude())
+                        .discussion(discussion)
+                        .build();
+                if (geoDto.latitude() != null && geoDto.longitude() != null) {
+                    geo.setLocation(makePoint(geoDto.longitude(), geoDto.latitude()));
+                }
+                discussion.getGeolocations().add(geo);
+            }
+        }
+
+        Discussion saved = discussionRepository.save(discussion);
+        return toDiscussionDto(saved, principal);
     }
 
     @Override
@@ -289,7 +333,7 @@ public class CommunityServiceImpl implements CommunityService {
     @Override
     @Transactional
     public void deleteDiscussion(UUID communityId, UUID discussionId, Long principal) {
-        if (!communityParticipationRepository.existsById_CommunityIdAndId_UserId(communityId, principal)) {
+        if (!communityParticipationRepository.existsByCommunityIdAndUserId(communityId, principal)) {
             throw new BadRequestException(BusinessExceptionCode.NOT_YOUR_COMMUNITY);
         }
 
@@ -328,7 +372,6 @@ public class CommunityServiceImpl implements CommunityService {
         return FeedResponse.builder().items(items).nextCursor(nextCursor).hasMore(hasMore).build();
     }
 
-    // ВСЕ ТОПИКИ (MAIN)
     @Override
     @Transactional(readOnly = true)
     public FeedDiscussionResponse getDiscussionFeed(Instant cursor, int size, Long principal) {
@@ -348,7 +391,6 @@ public class CommunityServiceImpl implements CommunityService {
                 : discussionRepository.findTopicNextPage(communityId, topicId, cursor, pageable);
         return buildDiscussionFeed(discussions, size, principal);
     }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -390,6 +432,12 @@ public class CommunityServiceImpl implements CommunityService {
 
         boolean isLiked = principal != null && discussionLikeRepository.existsByDiscussionIdAndAuthorId(d.getId(), principal);
 
+        List<GeolocationDto> geos = d.getGeolocations() != null
+                ? d.getGeolocations().stream()
+                .map(g -> new GeolocationDto(g.getId(), g.getTitle(), g.getLatitude(), g.getLongitude()))
+                .toList()
+                : List.of();
+
         return DiscussionDto.builder()
                 .created_at(d.getCreatedAt())
                 .id(d.getId())
@@ -404,6 +452,7 @@ public class CommunityServiceImpl implements CommunityService {
                 .mentionedUser(mentioned)
                 .countOfLikes(d.getCountOfLikes())
                 .isLiked(isLiked)
+                .geolocations(geos)
                 .build();
     }
 
@@ -412,7 +461,7 @@ public class CommunityServiceImpl implements CommunityService {
         List<CommunityTagDto> tags = communityTagRepository.findByCommunityId(c.getId())
                 .stream().map(t -> new CommunityTagDto(t.getId(), t.getTitle())).toList();
 
-        boolean isMember = currentUserId != null && communityParticipationRepository.existsById_CommunityIdAndId_UserId(c.getId(), currentUserId);
+        boolean isMember = currentUserId != null && communityParticipationRepository.existsByCommunityIdAndUserId(c.getId(), currentUserId);
         boolean isCreator = c.getCreatorId().equals(currentUserId);
 
         return CommunityDto.builder()
@@ -447,5 +496,11 @@ public class CommunityServiceImpl implements CommunityService {
         }
 
         return dto.toBuilder().shortUserInfoDto(author).isChallengeActive(isActive).attachments(attachments).isWinner(isWinner).isLiked(isLiked).build();
+    }
+
+
+    private Point makePoint(Double lon, Double lat) {
+        GeometryFactory gf = new GeometryFactory(new PrecisionModel(), 4326);
+        return gf.createPoint(new Coordinate(lon, lat));
     }
 }

@@ -13,7 +13,7 @@ import java.util.UUID;
 public interface CommunityParticipationRepository extends JpaRepository<CommunityParticipation, Long> {
 
 
-    boolean existsById_CommunityIdAndId_UserId(UUID communityId, Long userId);
+    boolean existsByCommunityIdAndUserId(UUID communityId, Long userId);
 
     CommunityParticipation getFirstByCommunityIdAndUserId(UUID communityId, Long userId);
 

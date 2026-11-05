@@ -24,6 +24,7 @@ public record DiscussionDto(
         Long countOfLikes,
         Boolean isAuthor,
         UUID community_id,
+        List<GeolocationDto> geolocations,
         Boolean isLiked
 
 ) {

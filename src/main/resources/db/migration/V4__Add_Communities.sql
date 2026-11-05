@@ -122,6 +122,14 @@ UPDATE publications.geolocations
 SET location = ST_MakePoint(longitude, latitude)::geography
 WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
 
+ALTER TABLE publications.geolocations
+    ADD COLUMN discussion_id UUID;
+
+ALTER TABLE publications.geolocations
+    ADD CONSTRAINT FK_GEOLOCATIONS_ON_DISCUSSIONS
+        FOREIGN KEY (discussion_id) REFERENCES publications.discussions(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_geolocations_discussion ON publications.geolocations(discussion_id);
 
 --хранилище, но для файлов обсуждений
 CREATE TABLE IF NOT EXISTS storage.discussion_attachment(
@@ -132,7 +140,7 @@ CREATE TABLE IF NOT EXISTS storage.discussion_attachment(
     photo_order     BIGINT,
     bucket_id       UUID,   --так же как и у файлов публикации - в бакет пользователя-владельца ыыы
     created_at      TIMESTAMP WITHOUT TIME ZONE,
-    CONSTRAINT pk_attachment PRIMARY KEY (id)
+    CONSTRAINT pk_discussion_attachment PRIMARY KEY (id)
     );
 
 ALTER TABLE storage.discussion_attachment
@@ -145,7 +153,7 @@ CREATE TABLE IF NOT EXISTS publications.discussion_likes(
     author_id        BIGINT,
     discussion_id   UUID,
     created_at      TIMESTAMP WITHOUT TIME ZONE,
-    CONSTRAINT pk_likes PRIMARY KEY (id)
+    CONSTRAINT pk_discussion_likes  PRIMARY KEY (id)
     );
 
 ALTER TABLE publications.discussion_likes

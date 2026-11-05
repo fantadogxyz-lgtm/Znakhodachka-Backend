@@ -1,7 +1,9 @@
 package com.znahodochka.backend.storage.controller;
 
 import com.znahodochka.backend.storage.dto.AttachmentDto;
+import com.znahodochka.backend.storage.dto.DiscussionAttachmentDto;
 import com.znahodochka.backend.storage.dto.UpdateAttachmentDto;
+import com.znahodochka.backend.storage.dto.UpdateDiscussionAttachmentDto;
 import com.znahodochka.backend.storage.service.AttachmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -21,6 +23,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AttachmentController {
     private final AttachmentService attachmentService;
+
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('BASIC')")
@@ -44,7 +47,33 @@ public class AttachmentController {
             @RequestBody List<UpdateAttachmentDto> attachments,
             final UsernamePasswordAuthenticationToken token) {
         attachmentService.updatePublicationAttachments(publicationId, attachments, (Long) token.getPrincipal());
-    } //такое же сделать для обсуждений
+    }
+
+
+    @PostMapping(value = "/discussion", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('BASIC')")
+    public DiscussionAttachmentDto uploadForDiscussion(
+            @RequestParam("file") MultipartFile file,
+            final UsernamePasswordAuthenticationToken token) throws IOException {
+        Long userId = (Long) token.getPrincipal();
+        return attachmentService.uploadForDiscussion(file, userId);
+    }
+
+    @GetMapping("/discussion/{discussionId}")
+    @PreAuthorize("hasAnyRole('BASIC')")
+    public List<DiscussionAttachmentDto> getByDiscussion(@PathVariable UUID discussionId) {
+        return attachmentService.getByDiscussionId(discussionId);
+    }
+
+    @PutMapping("/discussion/{discussionId}/attachments")
+    @PreAuthorize("hasAnyRole('BASIC')")
+    public void updateDiscussionAttachments(
+            @PathVariable UUID discussionId,
+            @RequestBody List<UpdateDiscussionAttachmentDto> attachments,
+            final UsernamePasswordAuthenticationToken token) {
+        attachmentService.updateDiscussionAttachments(discussionId, attachments, (Long) token.getPrincipal());
+    }
+
 
     @GetMapping("/download/{fileUri}")
     @PreAuthorize("hasAnyRole('BASIC')")
@@ -61,5 +90,4 @@ public class AttachmentController {
                 .contentType(mediaType)
                 .body(file);
     }
-
 }

@@ -10,7 +10,7 @@ import java.util.UUID;
 public record UpdateDiscussionDto(
         UUID id,
         String text,
-        List<DiscussionAttachmentDto> attachments
+        List<CreateGeolocationDto> geolocations
 
 ) {
 }
