@@ -18,7 +18,7 @@
 
 ### Стек технологий и инструментов
 *   **Язык:** Java 25
-*   **Фреймворк:** Spring Boot, Spring Web, Spring Security (JWT), Spring Data JPA, **Spring Modulith**
+*   **Фреймворк:** Spring Boot, Spring Web, Spring Security (JWT), Spring Data JPA
 *   **База данных:** PostgreSQL (с расширением **PostGIS** для геоданных)
 *   **Миграции:** Flyway
 *   **Маппинг:** MapStruct, Lombok
