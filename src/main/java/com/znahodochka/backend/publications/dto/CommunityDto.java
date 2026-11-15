@@ -17,6 +17,7 @@ public record CommunityDto(
         ShortUserInfoDto creator,
         Long membersCount,
         List<CommunityTagDto> tags,
+        boolean canDelete,
         boolean isMember,
         boolean isCreator,
         Instant createdAt

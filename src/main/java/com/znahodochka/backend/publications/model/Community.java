@@ -16,7 +16,7 @@ import java.util.UUID;
 public class Community {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy =  GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false, unique = true, length = 50)
@@ -37,7 +37,7 @@ public class Community {
     @Column(name = "created_at")
     private Instant createdAt;
 
-    @Column(name = "members_count ")
+    @Column(name = "members_count")
     private Long membersCount;
 
     @PrePersist

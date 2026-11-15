@@ -63,7 +63,10 @@ ALTER TABLE publications.publications
     ADD COLUMN IF NOT EXISTS community_id UUID;
 
 ALTER TABLE publications.publications
-    ADD CONSTRAINT FK_PUBLICATIONS_ON_COMMUNITIES FOREIGN KEY (community_id) REFERENCES publications.communities (id) ON DELETE CASCADE;
+    ADD CONSTRAINT FK_PUBLICATIONS_ON_COMMUNITIES
+        FOREIGN KEY (community_id)
+            REFERENCES publications.communities (id)
+            ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_publications_community ON publications.publications(community_id);
 

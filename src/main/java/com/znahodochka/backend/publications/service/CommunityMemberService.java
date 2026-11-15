@@ -9,4 +9,5 @@ public interface CommunityMemberService {
     void joinCommunity(UUID communityId, Long userId);
     void leaveCommunity(UUID communityId, Long userId);
     List<ShortUserInfoDto> getMembers(UUID communityId, int page, int size);
+    void deleteCommunity(UUID communityId, Long userId);
 }

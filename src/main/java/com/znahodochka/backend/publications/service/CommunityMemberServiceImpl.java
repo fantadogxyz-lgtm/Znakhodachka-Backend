@@ -14,6 +14,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.znahodochka.backend.storage.model.DiscussionAttachment;
+import com.znahodochka.backend.storage.repositories.DiscussionAttachmentRepository;
+import com.znahodochka.backend.storage.service.MinioService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +28,10 @@ import java.util.UUID;
 @Transactional
 public class CommunityMemberServiceImpl implements CommunityMemberService {
 
+    private final DiscussionAttachmentRepository discussionAttachmentRepository;
+    private final MinioService minioService;
+
+    private static final Logger log = LoggerFactory.getLogger(CommunityMemberServiceImpl.class);
     private final CommunityRepository communityRepository;
     private final UserService userService;
     private final CommunityParticipationRepository communityParticipationRepository;
@@ -74,5 +83,35 @@ public class CommunityMemberServiceImpl implements CommunityMemberService {
     public List<ShortUserInfoDto> getMembers(UUID communityId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         return communityParticipationRepository.findMembersByCommunityId(communityId, pageable);
+    }
+
+
+    @Override
+    @Transactional
+    public void deleteCommunity(UUID communityId, Long userId) {
+        Community community = communityRepository.findById(communityId)
+                .orElseThrow(() -> new ResourceNotFoundException("Community not found"));
+
+        if (!community.getCreatorId().equals(userId)) {
+            throw new BadRequestException(BusinessExceptionCode.ONLY_CREATOR_CAN_DELETE);
+        }
+
+        List<DiscussionAttachment> attachments =
+                discussionAttachmentRepository.findAllByCommunityId(communityId);
+
+        for (DiscussionAttachment att : attachments) {
+            if (att.getFileUri() == null || att.getBucket() == null) continue;
+            try {
+                minioService.deleteFile(
+                        att.getBucket().getBucketName(),
+                        att.getFileUri()
+                );
+            } catch (Exception e) {
+                log.warn("Failed to delete discussion attachment {}: {}",
+                        att.getFileUri(), e.getMessage());
+            }
+        }
+
+        communityRepository.delete(community);
     }
 }

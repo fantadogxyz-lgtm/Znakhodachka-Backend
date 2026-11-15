@@ -73,9 +73,18 @@ public class CommunityController {
         return communityService.getUserCommunities(userId, (Long) token.getPrincipal());
     }
 
-    @GetMapping("/search")
-    public List<CommunityShortDto> searchCommunities(@RequestParam String query, UsernamePasswordAuthenticationToken token) {
-        return communityService.searchCommunities(query, (Long) token.getPrincipal());
+    @GetMapping("/search/by-title")
+    public List<CommunityShortDto> searchByTitle(
+            @RequestParam String query,
+            UsernamePasswordAuthenticationToken token) {
+        return communityService.searchByTitle(query, (Long) token.getPrincipal());
+    }
+
+    @GetMapping("/search/by-slug")
+    public List<CommunityShortDto> searchBySlug(
+            @RequestParam String query,
+            UsernamePasswordAuthenticationToken token) {
+        return communityService.searchBySlug(query, (Long) token.getPrincipal());
     }
 
     @PutMapping("/{id}/cover_uri")
@@ -166,5 +175,10 @@ public class CommunityController {
             @RequestParam(defaultValue = "20") int size,
             UsernamePasswordAuthenticationToken token) {
         return communityService.getDiscussionReplies(communityId, parentId, cursor, size, (Long) token.getPrincipal());
+    }
+
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable UUID id, UsernamePasswordAuthenticationToken token) {
+        communityMemberService.deleteCommunity(id, (Long) token.getPrincipal());
     }
 }

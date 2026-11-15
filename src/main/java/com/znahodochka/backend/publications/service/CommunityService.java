@@ -15,7 +15,6 @@ public interface CommunityService {
     List<CommunityTagDto> getTags(UUID communityId);
     CommunityTagDto addTag(UUID communityId, String title, Long userId);
     List<CommunityShortDto> getUserCommunities(Long userId, Long currentUserId);
-    List<CommunityShortDto> searchCommunities(String query, Long currentUserId);
     void updateCoverUri(UUID communityId, String coverUri, Long userId);
     void deleteCoverUri(UUID communityId, Long userId);
     boolean isSlugFree(String slug);
@@ -38,4 +37,7 @@ public interface CommunityService {
 
     FeedDiscussionResponse getDiscussionReplies(UUID communityId, UUID parentId,
                                                 Instant cursor, int size, Long principal);
+
+    List<CommunityShortDto> searchByTitle(String query, Long currentUserId);
+    List<CommunityShortDto> searchBySlug(String query, Long currentUserId);
 }

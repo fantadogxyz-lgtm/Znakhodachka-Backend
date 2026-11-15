@@ -159,7 +159,9 @@ public enum BusinessExceptionCode {
     /**
      * 30
      */
-    NOT_YOUR_DISCUSSION
+    NOT_YOUR_DISCUSSION,
+    ONLY_CREATOR_CAN_DELETE
+
 
 
 }

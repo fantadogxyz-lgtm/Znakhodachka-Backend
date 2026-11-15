@@ -69,6 +69,7 @@ public class CommunityServiceImpl implements CommunityService {
                 .title(dto.title())
                 .description(dto.description())
                 .creatorId(creatorId)
+                .membersCount(0L)
                 .coverUri(dto.coverUri())
                 .build();
         community = communityRepository.save(community);
@@ -175,20 +176,23 @@ public class CommunityServiceImpl implements CommunityService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CommunityShortDto> searchCommunities(String query, Long currentUserId) {
-        if (query == null || query.trim().length() < 2) {
+    public List<CommunityShortDto> searchByTitle(String query, Long currentUserId) {
+        if (query == null || query.trim().isEmpty()) {
             return List.of();
         }
-        return communityRepository.searchBySlugOrTitle(query.trim())
-                .stream()
-                .map(c -> new CommunityShortDto(
-                        c.getId(),
-                        c.getSlug(),
-                        c.getTitle(),
-                        c.getCoverUri(),
-                        c.getMembersCount(),
-                        c.getCreatorId().equals(currentUserId)
-                ))
+        return communityRepository.searchByTitle(query.trim()).stream()
+                .map(c -> toShortDto(c, currentUserId))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CommunityShortDto> searchBySlug(String query, Long currentUserId) {
+        if (query == null || query.trim().isEmpty()) {
+            return List.of();
+        }
+        return communityRepository.searchBySlug(query.trim()).stream()
+                .map(c -> toShortDto(c, currentUserId))
                 .toList();
     }
 
@@ -457,7 +461,7 @@ public class CommunityServiceImpl implements CommunityService {
     }
 
     private CommunityDto toDto(Community c, Long currentUserId) {
-        long membersCount = c.getMembersCount();
+        long membersCount = c.getMembersCount() == null ? 0L : c.getMembersCount();
         List<CommunityTagDto> tags = communityTagRepository.findByCommunityId(c.getId())
                 .stream().map(t -> new CommunityTagDto(t.getId(), t.getTitle())).toList();
 
@@ -465,6 +469,7 @@ public class CommunityServiceImpl implements CommunityService {
         boolean isCreator = c.getCreatorId().equals(currentUserId);
 
         return CommunityDto.builder()
+                .canDelete(c.getCreatorId().equals(currentUserId))
                 .id(c.getId()).slug(c.getSlug()).title(c.getTitle()).description(c.getDescription())
                 .coverUri(c.getCoverUri()).creator(userService.getShortUserInfo(c.getCreatorId()))
                 .membersCount(membersCount).tags(tags).isMember(isMember).isCreator(isCreator).createdAt(c.getCreatedAt())
@@ -502,5 +507,16 @@ public class CommunityServiceImpl implements CommunityService {
     private Point makePoint(Double lon, Double lat) {
         GeometryFactory gf = new GeometryFactory(new PrecisionModel(), 4326);
         return gf.createPoint(new Coordinate(lon, lat));
+    }
+
+    private CommunityShortDto toShortDto(Community c, Long currentUserId) {
+        return new CommunityShortDto(
+                c.getId(),
+                c.getSlug(),
+                c.getTitle(),
+                c.getCoverUri(),
+                c.getMembersCount(),
+                c.getCreatorId().equals(currentUserId)
+        );
     }
 }

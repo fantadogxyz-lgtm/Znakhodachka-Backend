@@ -22,7 +22,7 @@ public interface CommunityRepository extends JpaRepository<Community, UUID> {
 
     @Query(value = """
         SELECT c.* FROM publications.communities c
-        JOIN publications.community_members cm ON cm.community_id = c.id
+        JOIN publications.community_participation cm ON cm.community_id = c.id
         WHERE cm.user_id = :userId
         ORDER BY CASE WHEN c.creator_id = :userId THEN 0 ELSE 1 END,
                  c.created_at DESC
@@ -33,18 +33,31 @@ public interface CommunityRepository extends JpaRepository<Community, UUID> {
     SELECT * FROM publications.communities c
     WHERE LOWER(c.slug) LIKE LOWER(:query) || '%'
        OR LOWER(c.slug) LIKE '%' || LOWER(:query) || '%'
-       OR LOWER(c.title) LIKE '%' || LOWER(:query) || '%'
     ORDER BY
         CASE
             WHEN LOWER(c.slug) = LOWER(:query) THEN 0
             WHEN LOWER(c.slug) LIKE LOWER(:query) || '%' THEN 1
-            WHEN LOWER(c.title) LIKE LOWER(:query) || '%' THEN 2
-            ELSE 3
+            ELSE 2
         END,
         c.slug
     LIMIT 30
 """, nativeQuery = true)
-    List<Community> searchBySlugOrTitle(@Param("query") String query);
+    List<Community> searchBySlug(@Param("query") String query);
+
+
+    @Query(value = """
+    SELECT * FROM publications.communities c
+    WHERE LOWER(c.title) LIKE '%' || LOWER(:query) || '%'
+    ORDER BY
+        CASE
+            WHEN LOWER(c.title) = LOWER(:query) THEN 0
+            WHEN LOWER(c.title) LIKE LOWER(:query) || '%' THEN 1
+            ELSE 2
+        END,
+        c.title
+    LIMIT 30
+""", nativeQuery = true)
+    List<Community> searchByTitle(@Param("query") String query);
 
     boolean existsBySlug(String slug);
 }

@@ -20,7 +20,7 @@ Discussion {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "text", nullable = false)
+    @Column(name = "text")
     String text;
 
     @Column(name = "type", nullable = false)
