@@ -5,12 +5,10 @@ import com.znahodochka.backend.exceptions.BusinessExceptionCode;
 import com.znahodochka.backend.exceptions.ResourceNotFoundException;
 import com.znahodochka.backend.publications.dto.*;
 import com.znahodochka.backend.publications.mappers.PublicationMapper;
+import com.znahodochka.backend.publications.model.Community;
 import com.znahodochka.backend.publications.model.Publication;
 import com.znahodochka.backend.publications.model.PublicationType;
-import com.znahodochka.backend.publications.repositories.CategoryRepository;
-import com.znahodochka.backend.publications.repositories.LikeRepository;
-import com.znahodochka.backend.publications.repositories.PublicationRepository;
-import com.znahodochka.backend.publications.repositories.TagRepository;
+import com.znahodochka.backend.publications.repositories.*;
 import com.znahodochka.backend.storage.dto.AttachmentDto;
 import com.znahodochka.backend.storage.service.AttachmentService;
 import com.znahodochka.backend.users.dto.ShortUserInfoDto;
@@ -41,10 +39,25 @@ public class PublicationServiceImpl implements PublicationService {
     private final TagRepository tagRepository;
     private final AttachmentService attachmentService;
     private final LikeRepository likeRepository;
+    private final CommunityRepository communityRepository;
 
     @Override
     public PublicationDto createPublication(CreatePublicationDto dto, Long userId) {
         validateByType(dto);
+
+         Community community = null;
+        if (dto.communityId() != null) {
+            community = communityRepository.findById(dto.communityId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Community with id: " + dto.communityId() + " not found"));
+        }
+
+        var category = dto.category() != null
+                ? categoryRepository.findById(dto.category()).orElseThrow(ResourceNotFoundException::new)
+                : null;
+        var tags = dto.tags() != null
+                ? new HashSet<>(tagRepository.findAllById(dto.tags()))
+                : new HashSet<com.znahodochka.backend.publications.model.Tag>();
 
         Publication publication = Publication.builder()
                 .authorId(userId)
@@ -55,15 +68,15 @@ public class PublicationServiceImpl implements PublicationService {
                 .longitude(dto.longitude())
                 .region(dto.region())
                 .city(dto.city())
+                .community(community)
                 .endDate(dto.endDate())
-                .category(categoryRepository.findById(dto.category()).orElseThrow(ResourceNotFoundException::new))
-                .tags(new HashSet<>(tagRepository.findAllById(dto.tags())))
+                .category(category)
+                .tags(tags)
                 .build();
 
         if (dto.latitude() != null && dto.longitude() != null) {
             publication.setLocation(makePoint(dto.longitude(), dto.latitude()));
         }
-
 
         if (dto.type() == PublicationType.CHALLENGE_RESPONSE) {
             Publication parent = publicationRepository.findById(dto.parentPublicationId())
@@ -100,19 +113,16 @@ public class PublicationServiceImpl implements PublicationService {
 
     @Override
     public FeedResponse getFeed(Instant cursor, int size, Long userId) {
-        Pageable pageable = PageRequest.of(0, size+1);
+        Pageable pageable = PageRequest.of(0, size + 1);
         List<Publication> publications;
-        if(cursor == null) {
+        if (cursor == null) {
             publications = publicationRepository.findFirstPage(PublicationType.CHALLENGE_RESPONSE, pageable);
-        } else{
+        } else {
             publications = publicationRepository.findNextPage(cursor, PublicationType.CHALLENGE_RESPONSE, pageable);
         }
 
         boolean hasMore = publications.size() > size;
-
-        if (hasMore) {
-            publications = publications.subList(0, size);
-        }
+        if (hasMore) publications = publications.subList(0, size);
 
         List<PublicationDto> items = publications.stream()
                 .map(p -> toDtoWithAuthor(p, userId))
@@ -121,7 +131,6 @@ public class PublicationServiceImpl implements PublicationService {
         Instant nextCursor = publications.isEmpty()
                 ? null
                 : publications.get(publications.size() - 1).getCreatedAt();
-
 
         return FeedResponse.builder()
                 .items(items)
@@ -141,9 +150,7 @@ public class PublicationServiceImpl implements PublicationService {
         }
 
         boolean hasMore = publications.size() > size;
-        if (hasMore) {
-            publications = publications.subList(0, size);
-        }
+        if (hasMore) publications = publications.subList(0, size);
 
         List<PublicationDto> items = publications.stream()
                 .map(p -> toDtoWithAuthor(p, userId))
@@ -162,19 +169,16 @@ public class PublicationServiceImpl implements PublicationService {
 
     @Override
     public FeedResponse getChallengeResponses(UUID challengeId, Instant cursor, int size, Long userId) {
-        Pageable pageable = PageRequest.of(0, size+1);
+        Pageable pageable = PageRequest.of(0, size + 1);
         List<Publication> publications;
-        if(cursor == null) {
+        if (cursor == null) {
             publications = publicationRepository.findResponsesByChallengeId(challengeId, pageable);
-        } else{
+        } else {
             publications = publicationRepository.findResponsesNextPage(challengeId, cursor, pageable);
         }
 
         boolean hasMore = publications.size() > size;
-
-        if (hasMore) {
-            publications = publications.subList(0, size);
-        }
+        if (hasMore) publications = publications.subList(0, size);
 
         List<PublicationDto> items = publications.stream()
                 .map(p -> toDtoWithAuthor(p, userId))
@@ -183,7 +187,6 @@ public class PublicationServiceImpl implements PublicationService {
         Instant nextCursor = publications.isEmpty()
                 ? null
                 : publications.get(publications.size() - 1).getCreatedAt();
-
 
         return FeedResponse.builder()
                 .items(items)
@@ -197,7 +200,6 @@ public class PublicationServiceImpl implements PublicationService {
         Pageable pageable = PageRequest.of(0, size + 1);
         List<Publication> publications;
 
-
         if (cursor == null) {
             publications = publicationRepository.findFollowingFirstPage(
                     userId, PublicationType.CHALLENGE_RESPONSE, pageable);
@@ -207,9 +209,7 @@ public class PublicationServiceImpl implements PublicationService {
         }
 
         boolean hasMore = publications.size() > size;
-        if (hasMore) {
-            publications = publications.subList(0, size);
-        }
+        if (hasMore) publications = publications.subList(0, size);
 
         List<PublicationDto> items = publications.stream()
                 .map(p -> toDtoWithAuthor(p, userId))
@@ -259,7 +259,6 @@ public class PublicationServiceImpl implements PublicationService {
                     && parent.getEndDate().isAfter(Instant.now());
         }
 
-
         Boolean isWinner = false;
         if (publication.getPublicationType() == PublicationType.CHALLENGE_RESPONSE) {
             Publication parent = publication.getParentPublication();
@@ -268,18 +267,38 @@ public class PublicationServiceImpl implements PublicationService {
                     && parent.getEndDate().isBefore(Instant.now())
                     && publication.getLikesCount() != null
                     && publication.getLikesCount() > 0) {
-                Long maxLikes = publicationRepository.findMaxLikesForChallenge(parent.getId(), PublicationType.CHALLENGE_RESPONSE);
+                Long maxLikes = publicationRepository.findMaxLikesForChallenge(
+                        parent.getId(), PublicationType.CHALLENGE_RESPONSE);
                 isWinner = publication.getLikesCount().equals(maxLikes);
             }
         }
 
+        // Community is optional. Build DTO from the entity directly (no extra query per feed item).
+        CommunityShortDto communityShortDto = toCommunityShortDto(publication.getCommunity(), currentUserId);
+
         return dto.toBuilder()
+                .communityShortDto(communityShortDto)
                 .shortUserInfoDto(author)
                 .isChallengeActive(isActive)
                 .attachments(attachments)
                 .isWinner(isWinner)
                 .isLiked(isLiked)
                 .build();
+    }
+
+    private CommunityShortDto toCommunityShortDto(Community community, Long currentUserId) {
+        if (community == null) {
+            return null;
+        }
+        boolean isOwner = currentUserId != null && currentUserId.equals(community.getCreatorId());
+        return new CommunityShortDto(
+                community.getId(),
+                community.getSlug(),
+                community.getTitle(),
+                community.getCoverUri(),
+                community.getMembersCount(),
+                isOwner
+        );
     }
 
     private void validateByType(CreatePublicationDto dto) {
@@ -318,7 +337,7 @@ public class PublicationServiceImpl implements PublicationService {
                 }
             }
         }
-        }
+    }
 
     @Transactional
     @Override
@@ -342,10 +361,6 @@ public class PublicationServiceImpl implements PublicationService {
         if (dto.endDate() != null && publication.getPublicationType() == PublicationType.CHALLENGE) {
             publication.setEndDate(dto.endDate());
         }
-
-//        if (dto.latitude() != null && dto.longitude() != null) {
-//            publication.setLocation(makePoint(dto.longitude(), dto.latitude()));
-//        }
 
         Publication saved = publicationRepository.save(publication);
 
@@ -386,20 +401,23 @@ public class PublicationServiceImpl implements PublicationService {
     }
 
     @Override
-    public List<PublicationDto> getRandomPublicationsInRadius(double lat, double lon, double radiusMeters, Long CategoryId, Set<Long> tagIds, Long currentUserId) {
+    public List<PublicationDto> getRandomPublicationsInRadius(double lat, double lon, double radiusMeters,
+                                                              Long categoryId, Set<Long> tagIds,
+                                                              Long currentUserId) {
         List<Publication> publications;
-        if (tagIds == null || CategoryId == null) {
+        if (tagIds == null || categoryId == null) {
             publications = publicationRepository.findRandomInRadius(lat, lon, radiusMeters);
-        } else if (tagIds == null || CategoryId != null) {
+        } else if (tagIds == null || categoryId != null) {
             publications = publicationRepository.findRandomInRadiusWithCategory(
-                    lat, lon, radiusMeters, CategoryId);
-        } else{
+                    lat, lon, radiusMeters, categoryId);
+        } else {
             publications = publicationRepository.findRandomInRadiusWithCategoryAndTags(
-                    lat, lon, radiusMeters, CategoryId, tagIds);
+                    lat, lon, radiusMeters, categoryId, tagIds);
         }
 
         return publications.stream()
-                .map(publication -> toDtoWithAuthor(publication, currentUserId)).toList();
+                .map(publication -> toDtoWithAuthor(publication, currentUserId))
+                .toList();
     }
 
     private Point makePoint(Double lon, Double lat) {

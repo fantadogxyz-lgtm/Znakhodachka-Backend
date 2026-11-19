@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,7 +26,26 @@ public interface DiscussionRepository extends JpaRepository<Discussion, UUID> {
 
     List<Discussion> findAllByParentId(UUID parentId);
 
-    // ==== ЛЕНТА ТОПИКОВ (только MAIN, от новых к старым) ====
+    @Query("SELECT COUNT(d) FROM Discussion d WHERE d.topic.id = :topicId")
+    long countByTopicId(@Param("topicId") UUID topicId);
+
+    @Query("SELECT COUNT(d) FROM Discussion d WHERE d.parent.id = :parentId")
+    long countByParentId(@Param("parentId") UUID parentId);
+
+    @Query("""
+        SELECT d.topic.id, COUNT(d) FROM Discussion d
+        WHERE d.topic.id IN :topicIds
+        GROUP BY d.topic.id
+    """)
+    List<Object[]> countGroupedByTopicIds(@Param("topicIds") Collection<UUID> topicIds);
+
+    @Query("""
+        SELECT d.parent.id, COUNT(d) FROM Discussion d
+        WHERE d.parent.id IN :parentIds
+        GROUP BY d.parent.id
+    """)
+    List<Object[]> countGroupedByParentIds(@Param("parentIds") Collection<UUID> parentIds);
+
     @Query("""
         SELECT d FROM Discussion d
         WHERE d.community IS NOT NULL
@@ -43,7 +63,6 @@ public interface DiscussionRepository extends JpaRepository<Discussion, UUID> {
     """)
     List<Discussion> findCommunityFeedNextPage(@Param("cursor") Instant cursor, Pageable pageable);
 
-    // ==== КОММЕНТАРИИ К ТОПИКУ (от новых к старым) ====
     @Query("""
         SELECT d FROM Discussion d
         WHERE d.topic.id = :topicId
@@ -66,7 +85,6 @@ public interface DiscussionRepository extends JpaRepository<Discussion, UUID> {
                                        @Param("cursor") Instant cursor,
                                        Pageable pageable);
 
-    // ==== ОТВЕТЫ НА КОММЕНТ (от новых к старым) ====
     @Query("""
         SELECT d FROM Discussion d
         WHERE d.parent.id = :parentId
@@ -88,4 +106,8 @@ public interface DiscussionRepository extends JpaRepository<Discussion, UUID> {
                                          @Param("parentId") UUID parentId,
                                          @Param("cursor") Instant cursor,
                                          Pageable pageable);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM publications.discussions WHERE community_id = :communityId", nativeQuery = true)
+    void deleteAllByCommunityIdNative(@Param("communityId") UUID communityId);
 }

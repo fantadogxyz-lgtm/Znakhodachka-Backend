@@ -24,9 +24,13 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -405,20 +409,88 @@ public class CommunityServiceImpl implements CommunityService {
                 : discussionRepository.findRepliesNextPage(communityId, parentId, cursor, pageable);
         return buildDiscussionFeed(discussions, size, principal);
     }
+    @Override
+    @Transactional(readOnly = true)
+    public FeedResponse getCommunityPublications(UUID communityId, Instant cursor, int size, Long principal) {
+        if (!communityRepository.existsById(communityId)) {
+            throw new ResourceNotFoundException("Community not found");
+        }
+
+        Pageable pageable = PageRequest.of(0, size + 1);
+        List<Publication> publications = (cursor == null)
+                ? publicationRepository.findByCommunityIdFirstPage(
+                communityId, PublicationType.CHALLENGE_RESPONSE, pageable)
+                : publicationRepository.findByCommunityIdNextPage(
+                communityId, PublicationType.CHALLENGE_RESPONSE, cursor, pageable);
+
+        boolean hasMore = publications.size() > size;
+        if (hasMore) publications = publications.subList(0, size);
+
+        List<PublicationDto> items = publications.stream()
+                .map(p -> toCommunityFeedDto(p, principal))
+                .toList();
+
+        Instant nextCursor = publications.isEmpty()
+                ? null
+                : publications.get(publications.size() - 1).getCreatedAt();
+
+        return FeedResponse.builder()
+                .items(items)
+                .nextCursor(nextCursor)
+                .hasMore(hasMore)
+                .build();
+    }
 
     private FeedDiscussionResponse buildDiscussionFeed(List<Discussion> raw, int size, Long principal) {
         boolean hasMore = raw.size() > size;
         List<Discussion> page = hasMore ? raw.subList(0, size) : raw;
         Instant nextCursor = page.isEmpty() ? null : page.get(page.size() - 1).getCreatedAt();
 
+        Map<UUID, Long> counts = computeCommentsCounts(page);
+
         return FeedDiscussionResponse.builder()
-                .items(page.stream().map(d -> toDiscussionDto(d, principal)).toList())
+                .items(page.stream()
+                        .map(d -> toDiscussionDto(d, principal, counts.getOrDefault(d.getId(), 0L)))
+                        .toList())
                 .nextCursor(nextCursor)
                 .hasMore(hasMore)
                 .build();
     }
 
+
+    private Map<UUID, Long> computeCommentsCounts(List<Discussion> discussions) {
+        if (discussions.isEmpty()) return Map.of();
+
+        List<UUID> topicIds = new ArrayList<>();
+        List<UUID> parentIds = new ArrayList<>();
+        for (Discussion d : discussions) {
+            if (d.getParent() == null && d.getTopic() == null) {
+                topicIds.add(d.getId());
+            } else {
+                parentIds.add(d.getId());
+            }
+        }
+
+        Map<UUID, Long> result = new HashMap<>();
+        if (!topicIds.isEmpty()) {
+            for (Object[] row : discussionRepository.countGroupedByTopicIds(topicIds)) {
+                result.put((UUID) row[0], ((Number) row[1]).longValue());
+            }
+        }
+        if (!parentIds.isEmpty()) {
+            for (Object[] row : discussionRepository.countGroupedByParentIds(parentIds)) {
+                result.put((UUID) row[0], ((Number) row[1]).longValue());
+            }
+        }
+        return result;
+    }
+
     private DiscussionDto toDiscussionDto(Discussion d, Long principal) {
+        Long commentsCount = countComments(d);
+        return toDiscussionDto(d, principal, commentsCount);
+    }
+
+    private DiscussionDto toDiscussionDto(Discussion d, Long principal, Long commentsCount) {
         List<DiscussionAttachmentDto> attachments = discussionAttachmentRepository
                 .findAllByDiscussionId(d.getId())
                 .stream()
@@ -447,7 +519,7 @@ public class CommunityServiceImpl implements CommunityService {
                 .id(d.getId())
                 .text(d.getText())
                 .type(d.getType())
-                .author_id(d.getAuthorId())
+                .author(userService.getShortUserInfo(d.getAuthorId()))
                 .isAuthor(d.getAuthorId().equals(principal))
                 .parent_id(d.getParent() != null ? d.getParent().getId() : null)
                 .topic_id(d.getTopic() != null ? d.getTopic().getId() : null)
@@ -457,7 +529,17 @@ public class CommunityServiceImpl implements CommunityService {
                 .countOfLikes(d.getCountOfLikes())
                 .isLiked(isLiked)
                 .geolocations(geos)
+                .commentsCount(commentsCount)
                 .build();
+    }
+
+
+    private Long countComments(Discussion d) {
+        if (d.getParent() == null && d.getTopic() == null) {
+
+            return discussionRepository.countByTopicId(d.getId());
+        }
+        return discussionRepository.countByParentId(d.getId());
     }
 
     private CommunityDto toDto(Community c, Long currentUserId) {

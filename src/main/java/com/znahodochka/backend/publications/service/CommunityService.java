@@ -39,5 +39,6 @@ public interface CommunityService {
                                                 Instant cursor, int size, Long principal);
 
     List<CommunityShortDto> searchByTitle(String query, Long currentUserId);
+    FeedResponse getCommunityPublications(UUID communityId, Instant cursor, int size, Long principal);
     List<CommunityShortDto> searchBySlug(String query, Long currentUserId);
 }

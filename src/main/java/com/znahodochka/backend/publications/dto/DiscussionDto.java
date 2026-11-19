@@ -17,7 +17,7 @@ public record DiscussionDto(
         DiscussionType type,
         UUID parent_id,
         UUID topic_id,
-        Long author_id,
+        ShortUserInfoDto author,
         List<DiscussionAttachmentDto> attachments,
         ShortUserInfoDto mentionedUser,
         Instant created_at,
@@ -25,7 +25,7 @@ public record DiscussionDto(
         Boolean isAuthor,
         UUID community_id,
         List<GeolocationDto> geolocations,
-        Boolean isLiked
-
+        Boolean isLiked,
+        Long commentsCount
 ) {
 }

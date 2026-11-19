@@ -5,8 +5,7 @@ import com.znahodochka.backend.exceptions.BusinessExceptionCode;
 import com.znahodochka.backend.exceptions.ResourceNotFoundException;
 import com.znahodochka.backend.publications.model.Community;
 import com.znahodochka.backend.publications.model.CommunityParticipation;
-import com.znahodochka.backend.publications.repositories.CommunityParticipationRepository;
-import com.znahodochka.backend.publications.repositories.CommunityRepository;
+import com.znahodochka.backend.publications.repositories.*;
 import com.znahodochka.backend.users.dto.ShortUserInfoDto;
 import com.znahodochka.backend.users.services.UserService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +34,10 @@ public class CommunityMemberServiceImpl implements CommunityMemberService {
     private final CommunityRepository communityRepository;
     private final UserService userService;
     private final CommunityParticipationRepository communityParticipationRepository;
+
+    private final DiscussionRepository discussionRepository;
+    private final CommunityTagRepository communityTagRepository;
+    private final PublicationRepository publicationRepository;
 
     @Override
     @Transactional
@@ -102,15 +105,16 @@ public class CommunityMemberServiceImpl implements CommunityMemberService {
         for (DiscussionAttachment att : attachments) {
             if (att.getFileUri() == null || att.getBucket() == null) continue;
             try {
-                minioService.deleteFile(
-                        att.getBucket().getBucketName(),
-                        att.getFileUri()
-                );
+                minioService.deleteFile(att.getBucket().getBucketName(), att.getFileUri());
             } catch (Exception e) {
-                log.warn("Failed to delete discussion attachment {}: {}",
-                        att.getFileUri(), e.getMessage());
+                log.warn("Failed to delete discussion attachment {}: {}", att.getFileUri(), e.getMessage());
             }
         }
+
+        discussionRepository.deleteAllByCommunityIdNative(communityId);
+        communityParticipationRepository.deleteAllByCommunityIdNative(communityId);
+        communityTagRepository.deleteAllByCommunityIdNative(communityId);
+        publicationRepository.detachFromCommunity(communityId);
 
         communityRepository.delete(community);
     }

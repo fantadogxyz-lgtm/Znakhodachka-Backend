@@ -142,6 +142,16 @@ public class CommunityController {
         return communityService.getPublicationFeed(cursor, size, (Long) token.getPrincipal());
     }
 
+    @GetMapping("/{communityId}/publications")
+    public FeedResponse getCommunityPublications(
+            @PathVariable UUID communityId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursor,
+            @RequestParam(defaultValue = "20") int size,
+            UsernamePasswordAuthenticationToken token) {
+        return communityService.getCommunityPublications(
+                communityId, cursor, size, (Long) token.getPrincipal());
+    }
+
     @GetMapping("/discussion-feed")
     public FeedDiscussionResponse getDiscussionFeed(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant cursor,

@@ -260,4 +260,33 @@ public interface PublicationRepository extends JpaRepository<Publication, UUID> 
             @Param("excluded") PublicationType excluded,
             @Param("cursor") Instant cursor,
             Pageable pageable);
+
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE publications.publications SET community_id = NULL WHERE community_id = :communityId", nativeQuery = true)
+    void detachFromCommunity(@Param("communityId") UUID communityId);
+
+    @Query("""
+SELECT p FROM Publication p
+WHERE p.community.id = :communityId
+  AND p.publicationType <> :excluded
+ORDER BY p.createdAt DESC
+""")
+    List<Publication> findByCommunityIdFirstPage(
+            @Param("communityId") UUID communityId,
+            @Param("excluded") PublicationType excluded,
+            Pageable pageable);
+
+    @Query("""
+SELECT p FROM Publication p
+WHERE p.community.id = :communityId
+  AND p.publicationType <> :excluded
+  AND p.createdAt < :cursor
+ORDER BY p.createdAt DESC
+""")
+    List<Publication> findByCommunityIdNextPage(
+            @Param("communityId") UUID communityId,
+            @Param("excluded") PublicationType excluded,
+            @Param("cursor") Instant cursor,
+            Pageable pageable);
 }
